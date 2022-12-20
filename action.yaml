@@ -1,7 +1,7 @@
 name: Notify Slack for CI run
 description: Send Slack notifications for CI run started / finished
 branding:
-  icon: slack
+  icon: message-circle
   color: blue
 inputs:
   type:
