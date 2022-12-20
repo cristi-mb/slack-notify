@@ -1,77 +1,106 @@
-name: Notify Slack for CI run
-description: Send Slack notifications for CI run started / finished
+name: Publish FE
+description: Build and deploy webapp
 branding:
-  icon: message-circle
+  icon: package
   color: blue
 inputs:
-  message-type:
-    description: 'Message type'
+  repo:
+    description: 'Repository holding webapp code'
+    required: true
+  aws-access-key:
+    description: 'AWS Secret Key ID'
+    required: true
+  aws-secret-access-key:
+    description: 'AWS Secret Access Key'
+    required: true
+  aws-region:
+    description: 'AWS Region of the S3 and CloudFront resources'
+    required: true
+  aws-s3-name:
+    description: 'Name of the AWS S3 bucket'
+    required: true
+  aws-cloudfront-name:
+    description: 'Name of the AWS S3 bucket'
     required: true
   slack-channel:
-    description: 'Slack channel to send the message to'
+    description: 'Name of the Slack channel used for CI alerts'
     required: true
-  slack-bot-token:
-    description: 'Token for Slack bot'
+  build-path:
+    description: 'Local path of the build'
     required: true
-  message-ts:
-    description: 'Timestamp of the start message'
-    required: false
-  steps-context:
-    description: 'Steps that ran on caller job'
-    required: false
-outputs:
-  message-ts:
-    description: "Start message timestamp"
-    value: ${{ steps.start-message.outputs.message-ts }}
+  node-version:
+    description: 'NodeJS required version'
+    required: true
 runs:
   using: "composite"
   steps:
-    - name: Send Start Message
-      if: inputs.message-type == 'start'
-      id: start-message
-      run: |
-        color="#FFCC40"
-        echo "message-ts=$(curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}", "attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[STARTING] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} - ${{ github.job }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|${{ github.event.head_commit.message }}>"}]},{"type":"divider"}]}]}' | jq '.ts')" >> $GITHUB_OUTPUT
-      shell: bash
+    - name: Notify Slack Start
+        id: notify-slack-start
+        uses: cristi-mb/slack-notify@1.1
+        with:
+          message-type: start
+          slack-channel: inputs.slack-channel
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
-    - name: Send Result Message
-      if: inputs.message-type == 'results'
-      id: result-message
-      run: |
-        echo ${{ inputs.steps-context }} | tr -d "'" > steps.json
-        
-        color="#44BB44" # green
-        steps="*Steps*\n"
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v3.2.0
 
-        for i in $(jq 'keys_unsorted[]' steps.json); do
-          if [[ $i == *"notify-slack"* ]]; then
-            continue;
-          fi
-        
-          outcome=$(jq ".$i.outcome" steps.json | tr -d '"')
-          case $outcome in
-            "success")
-              emoji=":heavy_check_mark:";;
-            "failure")
-              emoji=":x:"
-              color="BB4444";;
-            "skipped")
-              emoji=":fast_forward:";;
-            "cancelled")
-              emoji=":double_vertical_bar:";;
-            *)
-              emoji=":grey_question:";;
-          esac
-        
-          steps+=$(echo "\t$emoji\u0020$i\n\n" | tr -d '"')
-        done
+      - name: Setup Nodejs
+        id: setup-node
+        uses: actions/setup-node@v3
+        with:
+          node-version: inputs.node-version
 
-        curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}","attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[RESULTS] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} - ${{ github.job }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|${{ github.event.head_commit.message }}>"}]},{"type":"section","text":{"type":"mrkdwn","text":"'$steps'"}},{"type":"divider"}]}]}'
-      shell: bash
+      - name: Cache dependencies
+        id: node-cache
+        uses: actions/cache@v3.0.11
+        with:
+          path: |
+            **/node_modules
+          key: dev-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
 
-    - name: Delete Start message
-      if: steps.result-message.outcome == 'success'
-      run: |
-        channel_id=$(curl -s -d "token=${{ inputs.slack-bot-token }}" -d "exclude_archived=true" https://slack.com/api/conversations.list | jq '.channels[] | .id + " " + .name' | grep ${{ inputs.slack-channel }} | cut -d ' ' -f 1 | tr -d '"')
-        curl -s -d "token=${{ inputs.slack-bot-token }}" -d "channel=$channel_id" -d "ts=${{ inputs.message-ts }}" -X POST https://slack.com/api/chat.delete
-      shell: bash
+      - name: Install dependencies
+        id: install-dependencies
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: yarn install --pure-lockfile
+
+      - name: Build
+        id: build
+        run: yarn build
+        env:
+          CI: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          aws-access-key-id: inputs.aws-access-key
+          aws-secret-access-key: inputs.aws-secret-access-key
+          aws-region: inputs.aws-region
+
+      - name: Deploy static site to S3
+        id: deploy
+        run: ls -l && aws s3 sync ${{ inputs.build-path }} s3://${{ inputs.aws-s3-name }} --delete
+
+      - name: Invalidate CloudFront cache
+        id: invalidate-cache
+        run: |
+          #!/usr/bin/env bash
+          set -eou pipefail
+          CF_DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items!=null] | [?contains(Aliases.Items, '${{ inputs.aws-cloudfront-name }}')].Id | [0]" | tr -d \")
+          echo "Clearing cache for ${CF_DIST_ID}..."
+          CF_INVALIDATION_ID=$(aws cloudfront create-invalidation --distribution-id ${CF_DIST_ID} --paths "/*" | jq -r '.Invalidation.Id')
+          while [ $(aws cloudfront get-invalidation --distribution-id ${CF_DIST_ID} --id ${CF_INVALIDATION_ID} | jq -r '.Invalidation.Status') != "Completed" ]; do
+            echo "CF_DIST_ID=${CF_DIST_ID} CF_INVALIDATION_ID=${CF_INVALIDATION_ID}: Waiting for CloudFront cache invalidation to complete..."
+            sleep 5
+          done
+
+      - name: Notify Slack Result
+        if: always()
+        uses: cristi-mb/slack-notify@1.1
+        with:
+          message-type: results
+          slack-channel: inputs.slack-channel
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          message-ts: ${{ steps.notify-slack-start.outputs.message-ts }}
+          steps-context: "'${{ toJson(steps) }}'"
