@@ -39,7 +39,7 @@ runs:
       shell: bash
 
     - name: Send Result Message
-      if: always() && inputs.type == 'result'
+      if: always() && inputs.type == 'results'
       id: result-message
       run: |
         echo ${{ inputs.steps-context }} | tr -d "'" > steps.json
@@ -76,7 +76,7 @@ runs:
       shell: bash
 
     - name: Delete Start message
-      if: always() && inputs.type == 'result' && steps.result-message.outcome == 'success'
+      if: always() && inputs.type == 'results' && steps.result-message.outcome == 'success'
       run: |
         channel_id=$(curl -s -d "token=${{ inputs.slack-bot-token }}" -d "exclude_archived=true" https://slack.com/api/conversations.list | jq '.channels[] | .id + " " + .name' | grep ${{ inputs.slack-channel }} | cut -d ' ' -f 1 | tr -d '"')
         curl -s -d "token=${{ inputs.slack-bot-token }}" -d "channel=$channel_id" -d "ts=${{ inputs.message-ts }}" -X POST https://slack.com/api/chat.delete
