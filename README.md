@@ -1,8 +1,6 @@
 # slack-notify
 
-Inputs:
-
-
+### Inputs:
 
 | Name  | Required | Details | Default value |
 | :---: | :------: | :-----: | :-----------: |
@@ -12,7 +10,8 @@ Inputs:
 | message-ts | no | | |
 | steps-context | no | | |
 
-Outputs:
+<br>
 
-message-ts: Timestamp of the message sent to the channel (only with `message-type == start`)
+### Outputs:
 
+- **message-ts**: Timestamp of the message sent to the channel (only with `message-type == start`)
