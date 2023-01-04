@@ -41,7 +41,7 @@ runs:
         echo ${{ inputs.steps-context }} | tr -d "'" > steps.json
         
         color="#44BB44" # green
-        steps="*Steps*\n"
+        steps="*Steps*\n\n"
 
         for i in $(jq 'keys_unsorted[]' steps.json); do
           if [[ $i == *"notify-slack"* ]]; then
