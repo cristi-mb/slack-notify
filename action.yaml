@@ -32,7 +32,7 @@ runs:
       run: |
         color="#FFCC40"
         
-        commit_message=$(echo "${{ github.event.head_commit.message }}" | sed -r "s/#//g")
+        commit_message=$(echo "${{ github.event.head_commit.message }}" | tr '#' '' | xargs")
         echo "$commit_message"
         
         echo "message-ts=$(curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}", "attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[STARTING] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|'$commit_message'>"}]},{"type":"divider"}]}]}' | jq '.ts')" >> $GITHUB_OUTPUT
@@ -70,7 +70,8 @@ runs:
           steps+=$(echo "\t$emoji\u0020$i\n\n" | tr -d '"')
         done
 
-        commit_message=$(echo "${{ github.event.head_commit.message }}" | sed -r "s/#//g")
+        commit_message=$(echo "${{ github.event.head_commit.message }}" | tr '#' '' | xargs")
+        echo "$commit_message"
 
         curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}","attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[RESULTS] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|'$commit_message'>"}]},{"type":"section","text":{"type":"mrkdwn","text":"'$steps'"}},{"type":"divider"}]}]}'
       shell: bash
