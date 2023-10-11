@@ -74,10 +74,10 @@ runs:
 
         commit_message=$(echo "${{ github.event.head_commit.message }}" | sed -r "s/#/::/g")
         echo "$commit_message"
-        commit_body=$(echo "*Commit*\n<${{ github.event.compare }}|$commit_message>")
+        commit_body="*Commit*\n<${{ github.event.compare }}|$commit_message>"
         echo "Commit body: $commit_body"
 
-        curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}","attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[RESULTS] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|${{ github.event.head_commit.message }}>"}]},{"type":"section","text":{"type":"mrkdwn","text":"'$steps'"}},{"type":"divider"}]}]}'
+        curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}","attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[RESULTS] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<'$commit_body'>"}]},{"type":"section","text":{"type":"mrkdwn","text":"'$steps'"}},{"type":"divider"}]}]}'
       shell: bash
 
     - name: Delete Start message
