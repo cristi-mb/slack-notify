@@ -72,7 +72,7 @@ runs:
           steps+=$(echo "\t$emoji\u0020$i\n\n" | tr -d '"')
         done
 
-        commit_message=$(echo "${{ github.event.head_commit.message }}" | sed -r "s/#/::/g")
+        commit_message=$(echo "${{ github.event.head_commit.message }}" | tail -n 1)
         echo "Commit message: $commit_message"
         commit_body="*Commit*\n<${{ github.event.compare }}|$commit_message>"
         echo "Commit body: $commit_body"
