@@ -22,7 +22,7 @@ inputs:
 outputs:
   message-ts:
     description: "Start message timestamp"
-    value: ${{ steps.start-message.outputs.message-ts }}
+    value: ${{ steps.start-message.outputs.message_ts }}
 runs:
   using: "composite"
   steps:
@@ -36,7 +36,7 @@ runs:
       id: start-message
       run: |
         color="#FFCC40"
-        echo "message-ts=$(curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}", "attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[STARTING] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|${{ env.commit_message }}>"}]},{"type":"divider"}]}]}' | jq '.ts')" >> $GITHUB_OUTPUT
+        echo "message_ts=$(curl -s -H "Content-type: application/json" -H "Authorization: Bearer ${{ inputs.slack-bot-token }}" -X POST https://slack.com/api/chat.postMessage --data '{"channel":"${{ inputs.slack-channel }}", "attachments":[{"color":"'$color'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*[STARTING] <${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>*"}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Repository*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.name }}>"},{"type":"mrkdwn","text":"*Commit*\n<${{ github.event.compare }}|${{ env.commit_message }}>"}]},{"type":"divider"}]}]}' | jq '.ts')" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Send Result Message
