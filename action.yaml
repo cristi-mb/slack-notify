@@ -31,9 +31,13 @@ runs:
       id: start-message
       run: |
         color="#FFCC40"
-        
+
+        commit_url=$(echo "${{ github.event.compare }}")
         commit_message=$(echo "${{ github.event.head_commit.message }}" | tail -n 1)
-        commit_body="*Commit*\n<${{ github.event.compare }}|$commit_message>"
+        
+        commit_body="*Commit*\n"
+        commit_body+=$(echo "\u003C$commit_url\u007C$commit_message\u003E" | tr -d '"')
+        
         c=$(echo $commit_body)
         echo "[COMMIT] $c"
         
@@ -72,8 +76,12 @@ runs:
           steps+=$(echo "\t$emoji\u0020$i\n\n" | tr -d '"')
         done
 
+        commit_url=$(echo "${{ github.event.compare }}")
         commit_message=$(echo "${{ github.event.head_commit.message }}" | tail -n 1)
-        commit_body="*Commit*\n<${{ github.event.compare }}|$commit_message>"
+        
+        commit_body="*Commit*\n"
+        commit_body+=$(echo "\u003C$commit_url\u007C$commit_message\u003E" | tr -d '"')
+        
         c=$(echo $commit_body)
         echo "[COMMIT] $c"
 
